@@ -1,0 +1,34 @@
+@startuml
+!pragma layout smetana
+left to right direction
+skinparam shadowing false
+skinparam actorBorderColor #1B365D
+skinparam actorFontColor #1E232D
+skinparam usecaseBackgroundColor #FFFFFF
+skinparam usecaseBorderColor #1B365D
+skinparam usecaseFontColor #1E232D
+skinparam rectangleBorderColor #1B365D
+skinparam rectangleBackgroundColor #F8FAFC
+skinparam arrowColor #1B365D
+
+actor "Student" as Student
+
+rectangle "MyAdvisor" {
+  usecase "Track Degree Progress" as Track_Degree_Progress
+  usecase "Plan Semester Course Selections" as Plan_Semester_Course_Selections
+  usecase "Obtain Approval from Administrator/Advisor" as Obtain_Approval_from_Administrator_Advisor
+  usecase "Review and Decide on Semester Plan" as Review_and_Decide_on_Semester_Plan
+  usecase "Revise and Resubmit Semester Plan" as Revise_and_Resubmit_Semester_Plan
+}
+
+actor "Advisor/Administrator" as Advisor_Administrator
+
+Student --> Track_Degree_Progress
+Student --> Plan_Semester_Course_Selections
+Student --> Obtain_Approval_from_Administrator_Advisor
+Obtain_Approval_from_Administrator_Advisor ..> Review_and_Decide_on_Semester_Plan : <<include>>
+Review_and_Decide_on_Semester_Plan <-- Advisor_Administrator
+Student --> Revise_and_Resubmit_Semester_Plan
+Revise_and_Resubmit_Semester_Plan ..> Obtain_Approval_from_Administrator_Advisor : <<extend>>
+
+@enduml

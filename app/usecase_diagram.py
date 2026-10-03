@@ -129,6 +129,7 @@ def to_plantuml(spec: DiagramSpec) -> str:
     lines = [
         "@startuml",
         "!pragma layout smetana",
+        "left to right direction",
         "skinparam shadowing false",
         "skinparam actorBorderColor #1B365D",
         "skinparam actorFontColor #1E232D",

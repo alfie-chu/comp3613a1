@@ -1,0 +1,51 @@
+{
+  "system": "MyAdvisor",
+  "actors": [
+    {
+      "name": "Student",
+      "side": "left"
+    },
+    {
+      "name": "Advisor/Administrator",
+      "side": "right"
+    }
+  ],
+  "use_cases": [
+    {
+      "name": "Track Degree Progress",
+      "actors": [
+        "Student"
+      ]
+    },
+    {
+      "name": "Plan Semester Course Selections",
+      "actors": [
+        "Student"
+      ]
+    },
+    {
+      "name": "Obtain Approval from Administrator/Advisor",
+      "actors": [
+        "Student"
+      ],
+      "includes": [
+        "Review and Decide on Semester Plan"
+      ]
+    },
+    {
+      "name": "Review and Decide on Semester Plan",
+      "actors": [
+        "Advisor/Administrator"
+      ]
+    },
+    {
+      "name": "Revise and Resubmit Semester Plan",
+      "actors": [
+        "Student"
+      ],
+      "extends": [
+        "Obtain Approval from Administrator/Advisor"
+      ]
+    }
+  ]
+}
