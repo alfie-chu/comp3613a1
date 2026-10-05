@@ -1,90 +1,68 @@
 {% extends "base.html" %}
+{% from "_brand.html" import brand_lockup %}
 
 {% block internal_css %}
 <style>
-    body {
-        overflow-x: hidden;
-        background: #f4f6f8;
-    }
-
-    #wrapper {
-        display: flex;
-        min-height: 100vh;
-    }
-
-    #sidebar {
-        min-width: 250px;
-        max-width: 250px;
-        min-height: 100vh;
-        transition: all 0.3s;
-        background: var(--brand-sidebar);
-        color: #fff;
-    }
-
-    #sidebar.collapsed {
-        margin-left: -250px;
-    }
-
-    #sidebar .nav-link {
-        color: var(--brand-sidebar-text);
-        font-weight: 500;
-    }
-
-    #sidebar .nav-link:hover,
-    #sidebar .nav-link.active {
-        color: #fff;
-        background-color: color-mix(in srgb, var(--brand-accent) 55%, #000);
-        border-radius: 0.5rem;
-    }
-
-    #sidebar .brand-wordmark {
-        color: #fff;
-        font-size: 1.25rem;
-        text-align: center;
-        margin: 1rem 0 1.5rem;
-    }
-
-    #content {
-        width: 100%;
-        padding: 1rem;
-        transition: all 0.3s;
-        display: flex;
-        flex-direction: column;
-        background-color: #f4f6f8;
-    }
-
-    .navbar {
-        border-bottom: 1px solid #dee2e6;
-    }
+    body { overflow-x: hidden; }
 </style>
 {% block additional_styles %}{% endblock %}
 {% endblock %}
 
 {% block content %}
-<div id="wrapper">
-    <nav id="sidebar" class="p-3 d-flex flex-column vh-100">
-        <div class="brand-wordmark">FastStarter</div>
-
-        <ul class="nav nav-pills flex-column gap-2 flex-grow-1">
+<div id="wrapper" class="advisor-shell">
+    <nav id="sidebar" class="advisor-sidebar">
+        {{ brand_lockup() }}
+        <ul class="advisor-nav list-unstyled">
             <li class="nav-item">
-                <a class="nav-link d-flex align-items-center {{ 'active' if request.url.path.startswith('/app') }}"
-                   href="{{ url_for('user_home_view') }}">
-                    <span class="material-symbols-outlined me-2">home</span>
-                    Home
+                <a class="nav-link {{ 'active' if request.url.path in ['/app', '/admin'] }}"
+                   href="{{ url_for('admin_home_view') if user.role == 'admin' else url_for('user_home_view') }}">
+                    <span class="material-symbols-outlined">dashboard</span>
+                    Dashboard
                 </a>
             </li>
+            {% if user.role != 'admin' %}
+            <li class="nav-item">
+                <a class="nav-link {{ 'active' if request.url.path == '/degree' }}"
+                   href="{{ url_for('degree_progress_view') }}">
+                    <span class="material-symbols-outlined">school</span>
+                    Degree
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ 'active' if request.url.path.startswith('/semester-plan') }}"
+                   href="{{ url_for('semester_plan_view') }}">
+                    <span class="material-symbols-outlined">event_note</span>
+                    Semester Plan
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ 'active' if request.url.path.startswith('/my-plans') }}"
+                   href="{{ url_for('my_plans_view') }}">
+                    <span class="material-symbols-outlined">history</span>
+                    My Plans
+                </a>
+            </li>
+            {% else %}
+            <li class="nav-item">
+                <a class="nav-link {{ 'active' if request.url.path.startswith('/admin/review-plans') }}"
+                   href="{{ url_for('review_plans_view') }}">
+                    <span class="material-symbols-outlined">fact_check</span>
+                    Review Plans
+                </a>
+            </li>
+            {% endif %}
             <li class="nav-item mt-auto">
-                <a class="nav-link d-flex align-items-center text-danger" href="{{ url_for('logout') }}">
-                    <span class="material-symbols-outlined me-2">logout</span>
-                    Logout
+                <a class="nav-link nav-logout" href="{{ url_for('logout') }}">
+                    <span class="material-symbols-outlined">logout</span>
+                    Sign out
                 </a>
             </li>
         </ul>
     </nav>
 
-    <div id="content">
-        <nav class="navbar navbar-expand-lg bg-white mb-4 px-3 rounded-3 shadow-sm">
-            <button class="btn btn-outline-secondary" id="menu-toggle" type="button">
+    <div id="content" class="advisor-content">
+        <nav class="navbar navbar-expand-lg advisor-topbar mb-4 px-3">
+            <button class="btn btn-outline-secondary" id="menu-toggle" type="button" aria-label="Toggle navigation">
                 <span class="material-symbols-outlined md-dark">menu</span>
             </button>
             <div class="ms-auto d-flex align-items-center gap-3">

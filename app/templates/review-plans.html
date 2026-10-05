@@ -1,0 +1,50 @@
+{% extends "authenticated-base.html" %}
+{% block title %}Review plans | MyAdvisor{% endblock %}
+
+{% block subpage_content %}
+<main class="container-fluid py-2">
+  <div class="mb-4">
+    <p class="landing-kicker mb-2">Academic advising</p>
+    <h1 class="h3 mb-1">Semester plans for review</h1>
+    <p class="text-muted mb-0">Review submitted plans and record an advisor decision.</p>
+  </div>
+
+  <section class="card border-0 shadow-sm" aria-label="Pending semester plans">
+    <div class="card-body p-4">
+      {% if review_requests %}
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th scope="col">Student</th>
+              <th scope="col">Programme</th>
+              <th scope="col">Semester</th>
+              <th scope="col">Degree progress</th>
+              <th scope="col">Status</th>
+              <th scope="col"><span class="visually-hidden">Action</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in review_requests %}
+            <tr>
+              <td>{{ item.student.first_name }} {{ item.student.last_name }}</td>
+              <td>{{ item.degree_plan.programme_name }}</td>
+              <td>{{ item.semester.semester_name }}</td>
+              <td>{{ item.progress_percent }}%</td>
+              <td class="text-capitalize">{{ item.approval.status }}</td>
+              <td class="text-end">
+                <a class="btn btn-sm btn-outline-secondary"
+                   href="{{ url_for('review_plan_detail_view', request_id=item.approval.id) }}">Review</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">There are no semester plans awaiting review.</p>
+      {% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "authenticated-base.html" %}
+{% block title %}Degree progress | MyAdvisor{% endblock %}
+
+{% block subpage_content %}
+<main class="container-fluid py-2">
+  <div class="mb-4">
+    <p class="landing-kicker mb-2">Degree</p>
+    <h1 class="h3 mb-1">Track degree progress</h1>
+    <p class="text-muted mb-0">Review your completed courses and remaining requirements.</p>
+  </div>
+
+  {% if progress %}
+  <section class="card border-0 shadow-sm mb-4" aria-labelledby="degree-summary-heading">
+    <div class="card-body p-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div>
+          <p class="text-muted small mb-1">Degree</p>
+          <h2 class="h5 mb-0" id="degree-summary-heading">{{ progress.programme_name }}</h2>
+        </div>
+        <span class="badge rounded-pill text-bg-light text-capitalize">{{ progress.status }}</span>
+      </div>
+
+      <div class="mt-4">
+        <div class="d-flex justify-content-between align-items-baseline gap-3 mb-2">
+          <span class="fw-semibold">Overall progress</span>
+          <span class="text-muted">{{ progress.progress_percent }}% complete</span>
+        </div>
+        <div class="progress" role="progressbar"
+             aria-label="Degree progress"
+             aria-valuenow="{{ progress.progress_percent }}"
+             aria-valuemin="0" aria-valuemax="100" style="height: .8rem;">
+          <div class="progress-bar" style="width: {{ progress.progress_percent }}%; background-color: var(--brand-accent);"></div>
+        </div>
+        <p class="small text-muted mt-2 mb-0">
+          Credits earned: {{ progress.completed_credits }} / {{ progress.total_credits_required }}
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card border-0 shadow-sm mb-4" aria-labelledby="courses-heading">
+    <div class="card-body p-4">
+      <h2 class="h5 mb-3" id="courses-heading">Completed courses</h2>
+      {% if progress.completed_courses %}
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th scope="col">Course code</th>
+              <th scope="col">Status</th>
+              <th scope="col">Grade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for course in progress.completed_courses %}
+            <tr>
+              <td>
+                <span class="fw-semibold">{{ course.course_code }}</span>
+                <span class="d-block small text-muted">{{ course.title }}</span>
+              </td>
+              <td>Completed</td>
+              <td>{{ course.grade }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">No completed courses have been recorded yet.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card border-0 shadow-sm" aria-labelledby="requirements-heading">
+    <div class="card-body p-4">
+      <h2 class="h5 mb-3" id="requirements-heading">Remaining requirements</h2>
+      {% if progress.outstanding_requirements %}
+      <ul class="list-group list-group-flush">
+        {% for requirement in progress.outstanding_requirements %}
+        <li class="list-group-item px-0">
+          <span class="fw-semibold">{{ requirement.course_code }} · {{ requirement.title }}</span>
+          <span class="d-block small text-muted">{{ requirement.requirement_type }} — {{ requirement.completion_rule }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-muted mb-0">All required courses on your degree plan are complete.</p>
+      {% endif %}
+    </div>
+  </section>
+  {% else %}
+  <div class="alert alert-light border" role="status">
+    <h2 class="h6">No student profile is linked to this account yet.</h2>
+    <p class="mb-0">Ask an advisor to link your student record before viewing degree progress.</p>
+  </div>
+  {% endif %}
+</main>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends "authenticated-base.html" %}
+{% block title %}Review semester plan | MyAdvisor{% endblock %}
+
+{% block subpage_content %}
+<main class="container-fluid py-2">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <p class="landing-kicker mb-2">Academic advising</p>
+      <h1 class="h3 mb-1">Review semester plan</h1>
+      <p class="text-muted mb-0">{{ review_detail.student.first_name }} {{ review_detail.student.last_name }} · {{ review_detail.degree_plan.programme_name }}</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="{{ url_for('review_plans_view') }}">Back to review plans</a>
+  </div>
+
+  <section class="card border-0 shadow-sm mb-4" aria-labelledby="review-summary-heading">
+    <div class="card-body p-4">
+      <h2 class="h5 mb-3" id="review-summary-heading">Plan summary</h2>
+      <dl class="row mb-0">
+        <dt class="col-sm-3">Semester</dt>
+        <dd class="col-sm-9">{{ review_detail.semester.semester_name }}</dd>
+        <dt class="col-sm-3">Degree progress</dt>
+        <dd class="col-sm-9">
+          {{ review_detail.progress_percent }}% ({{ review_detail.completed_credits }} / {{ review_detail.degree_plan.total_credits_required }} credits)
+        </dd>
+        <dt class="col-sm-3">Plan status</dt>
+        <dd class="col-sm-9 text-capitalize">{{ review_detail.plan.status.replace('_', ' ') }}</dd>
+      </dl>
+    </div>
+  </section>
+
+  <section class="card border-0 shadow-sm mb-4" aria-labelledby="review-courses-heading">
+    <div class="card-body p-4">
+      <h2 class="h5 mb-3" id="review-courses-heading">Selected courses</h2>
+      {% if review_detail.selected_courses %}
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th scope="col">Course code</th>
+              <th scope="col">Name</th>
+              <th scope="col">Credits</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for selection, offering, course in review_detail.selected_courses %}
+            <tr>
+              <td>{{ course.course_code }} · Section {{ offering.section }}</td>
+              <td>{{ course.title }}</td>
+              <td>{{ course.credits }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row" colspan="2">Total credits</th>
+              <td class="fw-semibold">{{ review_detail.planned_credits }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">No courses were recorded for this plan.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if review_detail.approval.status == 'pending' %}
+  <section class="card border-0 shadow-sm" aria-labelledby="decision-heading">
+    <div class="card-body p-4">
+      <h2 class="h5 mb-3" id="decision-heading">Advisor comments and decision</h2>
+      <form method="post" action="{{ url_for('review_plan_decision', request_id=review_detail.approval.id) }}">
+        <div class="mb-3">
+          <label class="form-label" for="comments">Advisor comments</label>
+          <textarea class="form-control" id="comments" name="comments" rows="4"
+                    placeholder="Add comments, especially when requesting a revision or rejecting the plan."></textarea>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-primary" name="outcome" value="approved" type="submit">Approve</button>
+          <button class="btn btn-outline-secondary" name="outcome" value="revision_required" type="submit">Request revision</button>
+          <button class="btn btn-outline-danger" name="outcome" value="rejected" type="submit">Reject</button>
+        </div>
+      </form>
+    </div>
+  </section>
+  {% else %}
+  <section class="card border-0 shadow-sm" aria-labelledby="decision-heading">
+    <div class="card-body p-4">
+      <h2 class="h5 mb-2" id="decision-heading">Decision recorded</h2>
+      <p class="mb-1 text-capitalize">{{ review_detail.approval.status.replace('_', ' ') }}</p>
+      <p class="text-muted mb-0">{{ review_detail.approval.advisor_comments }}</p>
+    </div>
+  </section>
+  {% endif %}
+</main>
+{% endblock %}

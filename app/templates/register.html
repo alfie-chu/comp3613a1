@@ -1,12 +1,16 @@
 {% extends "base.html" %}
+{% from "_brand.html" import brand_lockup %}
 {% block title %}Register{% endblock %}
 
 {% block content %}
 <div class="auth-shell">
   <div class="auth-panel">
-    <a class="auth-back" href="{{ url_for('index_view') }}">← Home</a>
-    <div class="brand-wordmark">FastStarter</div>
-    <p class="auth-tagline">Create an account</p>
+    <div class="auth-header">
+      <a class="auth-back" href="{{ url_for('index_view') }}" aria-label="Back to MyAdvisor" title="Back to MyAdvisor">&#8592;</a>
+      {{ brand_lockup() }}
+    </div>
+    <h1 class="h4 mb-1">Create your account</h1>
+    <p class="auth-tagline">Start organizing your degree progress and plans.</p>
 
     <form method="POST" action="{{ url_for('register_view') }}">
       <div class="mb-3">

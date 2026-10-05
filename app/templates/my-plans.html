@@ -1,0 +1,73 @@
+{% extends "authenticated-base.html" %}
+{% block title %}My plans | MyAdvisor{% endblock %}
+
+{% block subpage_content %}
+<main class="container-fluid py-2">
+  <div class="mb-4">
+    <p class="landing-kicker mb-2">Planning history</p>
+    <h1 class="h3 mb-1">My semester plans</h1>
+    <p class="text-muted mb-0">Review submitted and previous semester plans.</p>
+  </div>
+
+  {% if not history.student %}
+  <div class="alert alert-light border" role="status">
+    <h2 class="h6">Student profile unavailable</h2>
+    <p class="mb-0">{{ history.message }}</p>
+  </div>
+  {% else %}
+  {% if history.plans %}
+  <section class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th scope="col">Semester</th>
+              <th scope="col">Date submitted</th>
+              <th scope="col">Status</th>
+              <th scope="col"><span class="visually-hidden">Action</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for plan, semester in history.plans %}
+            <tr>
+              <td>{{ semester.semester_name }}</td>
+              <td>
+                {% if plan.submitted_at %}
+                {{ plan.submitted_at.strftime('%b %d') }}
+                {% else %}
+                <span class="text-muted">Not submitted</span>
+                {% endif %}
+              </td>
+              <td><span class="text-capitalize">{{ plan.status.replace('_', ' ') }}</span></td>
+              <td class="text-end">
+                <div class="d-inline-flex gap-2">
+                  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('my_plan_detail_view', plan_id=plan.id) }}">View</a>
+                  {% if plan.status in ['draft', 'revision_required'] %}
+                  <a class="btn btn-sm btn-primary" href="{{ url_for('semester_plan_view').include_query_params(plan_id=plan.id) }}">Edit</a>
+                  {% endif %}
+                  {% if plan.status == 'draft' %}
+                  <form method="post" action="{{ url_for('my_plan_delete', plan_id=plan.id) }}"
+                        onsubmit="return confirm('Delete this draft semester plan? Its selected courses will also be removed.');">
+                    <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                  </form>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+  {% else %}
+  <section class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      <p class="mb-0">No semester plans have been created yet.</p>
+    </div>
+  </section>
+  {% endif %}
+  {% endif %}
+</main>
+{% endblock %}

@@ -23,7 +23,7 @@ def _ensure_models_loaded() -> None:
 
 
 def cmd_init(args: argparse.Namespace) -> None:
-    """Create database tables (drops existing by default) and seed demo users."""
+    """Create database tables (drops existing by default) and seed demo data."""
     from app.config import get_settings
     from app.database import drop_all, ensure_db_and_tables
 
@@ -47,15 +47,29 @@ def cmd_init(args: argparse.Namespace) -> None:
 
 
 def cmd_seed(args: argparse.Namespace) -> None:
-    """Insert demo users.
+    """Insert demo users and a sample student degree-progress record.
 
     bob / bobpass       (regular_user)
     admin / adminpass   (admin)
     """
+    from datetime import date, datetime
+
     from app.database import ensure_db_and_tables, get_cli_session
+    from app.models.degree_progress import (
+        Course,
+        CourseCompletion,
+        CoursePrerequisite,
+        DegreePlan,
+        DegreeRequirement,
+        Semester,
+    )
+    from app.models.approval import Advisor
+    from app.models.semester_plan import CourseOffering, CourseSelection, SemesterPlan
+    from app.models.student import Student
     from app.repositories.user import UserRepository
     from app.schemas.user import AdminCreate, RegularUserCreate
     from app.utilities.security import encrypt_password
+    from sqlmodel import select
 
     _ensure_models_loaded()
     ensure_db_and_tables()
@@ -85,6 +99,256 @@ def cmd_seed(args: argparse.Namespace) -> None:
             )
             print(f"  create {username} ({role})")
             created += 1
+
+        bob = repo.get_by_username("bob")
+        if bob is None or bob.id is None:
+            raise RuntimeError("Unable to seed the MyAdvisor student demo account.")
+        admin = repo.get_by_username("admin")
+        if admin is None or admin.id is None:
+            raise RuntimeError("Unable to seed the MyAdvisor administrator account.")
+
+        advisor = session.exec(
+            select(Advisor).where(Advisor.user_id == admin.id)
+        ).one_or_none()
+        if advisor is None:
+            session.add(
+                Advisor(
+                    user_id=admin.id,
+                    first_name="Admin",
+                    last_name="Advisor",
+                    email="admin@example.com",
+                    department="Academic Advising",
+                )
+            )
+            session.commit()
+            print("  create advisor profile for admin")
+
+        existing_student = session.exec(
+            select(Student).where(Student.user_id == bob.id)
+        ).one_or_none()
+        student = existing_student
+        degree_plan = (
+            session.get(DegreePlan, student.degree_plan_id)
+            if student is not None
+            else None
+        )
+        if student is None:
+            degree_plan = DegreePlan(
+                programme_name="BSc Computer Science",
+                total_credits_required=93,
+                start_year=2026,
+                end_year=2029,
+                status="active",
+            )
+            session.add(degree_plan)
+            session.flush()
+            if degree_plan.id is None:
+                raise RuntimeError("Unable to create Bob's degree plan.")
+
+            student = Student(
+                user_id=bob.id,
+                student_number="100000001",
+                first_name="Bob",
+                last_name="Student",
+                email="bob@example.com",
+                degree_plan_id=degree_plan.id,
+                status="active",
+            )
+            session.add(student)
+            session.flush()
+            if student.id is None:
+                raise RuntimeError("Unable to create Bob's student profile.")
+            print("  create sample student profile for bob")
+        elif degree_plan is None:
+            raise RuntimeError("Bob's student profile references a missing degree plan.")
+
+        if student.id is None or degree_plan.id is None:
+            raise RuntimeError("Bob's student profile and degree plan must be saved.")
+
+        course_data = [
+            ("COMP 1001", "Introduction to Computing", 3, "Core", "1000"),
+            ("COMP 1602", "Programming Fundamentals", 3, "Core", "1000"),
+            ("MATH 1140", "Discrete Mathematics", 3, "Mathematics", "1000"),
+            ("COMP 2610", "Data Structures", 3, "Core", "2000"),
+            ("COMP 3010", "Software Engineering", 3, "Core", "3000"),
+        ]
+        courses_by_code: dict[str, Course] = {}
+        for course_code, title, credits, category, level in course_data:
+            course = session.exec(
+                select(Course).where(Course.course_code == course_code)
+            ).one_or_none()
+            if course is None:
+                course = Course(
+                    course_code=course_code,
+                    title=title,
+                    credits=credits,
+                    category=category,
+                    level=level,
+                )
+                session.add(course)
+            courses_by_code[course_code] = course
+        session.flush()
+        if any(course.id is None for course in courses_by_code.values()):
+            raise RuntimeError("Unable to save the sample course catalogue.")
+
+        history_semester = session.exec(
+            select(Semester).where(
+                Semester.semester_name == "Semester 2 2025/2026",
+                Semester.year == 2025,
+            )
+        ).one_or_none()
+        if history_semester is None:
+            history_semester = Semester(
+                semester_name="Semester 2 2025/2026",
+                year=2025,
+                start_date=date(2026, 1, 12),
+                end_date=date(2026, 5, 1),
+            )
+            session.add(history_semester)
+            session.flush()
+        if history_semester.id is None:
+            raise RuntimeError("Unable to save the sample history semester.")
+
+        for course_code in ("COMP 1001", "COMP 1602", "MATH 1140"):
+            course = courses_by_code[course_code]
+            completion = session.exec(
+                select(CourseCompletion).where(
+                    CourseCompletion.student_id == student.id,
+                    CourseCompletion.course_id == course.id,
+                )
+            ).one_or_none()
+            if completion is None:
+                session.add(
+                    CourseCompletion(
+                        student_id=student.id,
+                        course_id=course.id,
+                        semester_id=history_semester.id,
+                        grade="B+",
+                        completed_at=datetime(2026, 5, 15),
+                        is_transfer=False,
+                    )
+                )
+
+        for course_code in ("COMP 2610", "COMP 3010"):
+            course = courses_by_code[course_code]
+            requirement = session.exec(
+                select(DegreeRequirement).where(
+                    DegreeRequirement.degree_plan_id == degree_plan.id,
+                    DegreeRequirement.course_id == course.id,
+                )
+            ).one_or_none()
+            if requirement is None:
+                session.add(
+                    DegreeRequirement(
+                        degree_plan_id=degree_plan.id,
+                        course_id=course.id,
+                        requirement_type="Core",
+                        is_required=True,
+                        completion_rule="Complete the course",
+                    )
+                )
+
+        current_semester = session.exec(
+            select(Semester).where(
+                Semester.semester_name == "Semester 1 2026/2027",
+                Semester.year == 2026,
+            )
+        ).one_or_none()
+        if current_semester is None:
+            current_semester = Semester(
+                semester_name="Semester 1 2026/2027",
+                year=2026,
+                start_date=date(2026, 8, 17),
+                end_date=date(2026, 12, 18),
+            )
+            session.add(current_semester)
+            session.flush()
+        if current_semester.id is None:
+            raise RuntimeError("Unable to save the sample current semester.")
+
+        offerings_by_code: dict[str, CourseOffering] = {}
+        for course_code in courses_by_code:
+            course = courses_by_code[course_code]
+            offering = session.exec(
+                select(CourseOffering).where(
+                    CourseOffering.course_id == course.id,
+                    CourseOffering.semester_id == current_semester.id,
+                    CourseOffering.section == "01",
+                )
+            ).one_or_none()
+            if offering is None:
+                offering = CourseOffering(
+                    course_id=course.id,
+                    semester_id=current_semester.id,
+                    section="01",
+                    delivery_mode="In person",
+                    status="open",
+                )
+                session.add(offering)
+            offerings_by_code[course_code] = offering
+        session.flush()
+        if any(offering.id is None for offering in offerings_by_code.values()):
+            raise RuntimeError("Unable to save the sample course offerings.")
+
+        prerequisite_pairs = (
+            ("COMP 2610", "COMP 1602"),
+            ("COMP 3010", "COMP 2610"),
+        )
+        for course_code, prerequisite_code in prerequisite_pairs:
+            course = courses_by_code[course_code]
+            prerequisite = courses_by_code[prerequisite_code]
+            relationship = session.exec(
+                select(CoursePrerequisite).where(
+                    CoursePrerequisite.course_id == course.id,
+                    CoursePrerequisite.prerequisite_course_id == prerequisite.id,
+                )
+            ).one_or_none()
+            if relationship is None:
+                session.add(
+                    CoursePrerequisite(
+                        course_id=course.id,
+                        prerequisite_course_id=prerequisite.id,
+                    )
+                )
+
+        semester_plan = session.exec(
+            select(SemesterPlan)
+            .where(
+                SemesterPlan.student_id == student.id,
+                SemesterPlan.semester_id == current_semester.id,
+                SemesterPlan.status.in_(("draft", "revision_required")),
+            )
+            .order_by(SemesterPlan.created_at.desc())
+        ).first()
+        if semester_plan is None:
+            semester_plan = SemesterPlan(
+                student_id=student.id,
+                semester_id=current_semester.id,
+                status="draft",
+            )
+            session.add(semester_plan)
+            session.flush()
+        if semester_plan.id is None:
+            raise RuntimeError("Unable to save Bob's sample semester plan.")
+
+        for course_code in ("COMP 2610", "COMP 3010"):
+            offering = offerings_by_code[course_code]
+            selection = session.exec(
+                select(CourseSelection).where(
+                    CourseSelection.semester_plan_id == semester_plan.id,
+                    CourseSelection.course_offering_id == offering.id,
+                )
+            ).one_or_none()
+            if selection is None:
+                session.add(
+                    CourseSelection(
+                        semester_plan_id=semester_plan.id,
+                        course_offering_id=offering.id,
+                    )
+                )
+
+        session.commit()
+        print("  ensure sample degree progress and draft plan for bob")
 
     print(f"Seed done — created {created}, skipped {skipped}.")
     print("Login with bob/bobpass or admin/adminpass")
@@ -221,7 +485,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_init = sub.add_parser(
         "init",
-        help="Create DB tables and seed demo users (drops existing tables by default)",
+        help="Create DB tables and seed demo data (drops existing tables by default)",
     )
     p_init.add_argument(
         "--no-drop",
@@ -233,13 +497,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-seed",
         dest="seed",
         action="store_false",
-        help="Skip demo user seed after creating tables",
+        help="Skip demo-data seed after creating tables",
     )
     p_init.set_defaults(drop=True, seed=True, func=cmd_init)
 
     p_seed = sub.add_parser(
         "seed",
-        help="Insert demo users only (idempotent; also runs as part of init)",
+        help="Insert demo users and sample degree progress (idempotent; also runs as part of init)",
     )
     p_seed.set_defaults(func=cmd_seed)
 

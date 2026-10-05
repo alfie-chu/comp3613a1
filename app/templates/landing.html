@@ -1,43 +1,59 @@
 {% extends "base.html" %}
-{% block title %}FastStarter{% endblock %}
+{% from "_brand.html" import brand_lockup %}
+{% block title %}MyAdvisor | Academic planning{% endblock %}
 
 {% block content %}
 <div class="landing">
-  <div class="landing-orb" aria-hidden="true"></div>
-  <div class="landing-orb landing-orb-2" aria-hidden="true"></div>
-
   <header class="landing-nav">
-    <a class="brand-wordmark" href="{{ url_for('index_view') }}">FastStarter</a>
+    <a href="{{ url_for('index_view') }}" aria-label="MyAdvisor home">{{ brand_lockup() }}</a>
     <div class="landing-nav-actions">
       {% if user_logged_in %}
-      <a class="btn-landing btn-landing-ghost" href="{{ app_home }}">Open app</a>
+      <a class="btn-landing btn-landing-ghost" href="{{ app_home }}">Open dashboard</a>
       <a class="btn-landing btn-landing-ghost" href="{{ url_for('logout') }}">Sign out</a>
       {% else %}
       <a class="btn-landing btn-landing-ghost" href="{{ url_for('login_view') }}">Sign in</a>
-      <a class="btn-landing btn-landing-primary" href="{{ url_for('register_view') }}">Get started</a>
+      <a class="btn-landing btn-landing-primary" href="{{ url_for('register_view') }}">Create account</a>
       {% endif %}
     </div>
   </header>
 
-  <main class="landing-hero">
-    <p class="landing-kicker">Coursework starter</p>
-    <h1 class="brand-wordmark">FastStarter</h1>
-    <p class="landing-lead">
-      A placeholder landing page for your COMP 3613 app.
-      Phase 5 theming replaces these colors, type, and copy with your brand.
-    </p>
-    <div class="landing-cta">
-      {% if user_logged_in %}
-      <a class="btn-landing btn-landing-primary" href="{{ app_home }}">Continue to app</a>
-      {% else %}
-      <a class="btn-landing btn-landing-primary" href="{{ url_for('register_view') }}">Create account</a>
-      <a class="btn-landing btn-landing-ghost" href="{{ url_for('login_view') }}">Sign in</a>
-      {% endif %}
-    </div>
+  <main class="landing-main">
+    <section class="landing-hero">
+      <p class="landing-kicker">Academic planning, made clear</p>
+      <h1>Your degree, with a plan.</h1>
+      <p class="landing-lead">
+        Keep track of degree progress, plan upcoming courses, and send semester plans
+        for advisor review — all in one calm, clear workspace.
+      </p>
+      <div class="landing-cta">
+        {% if user_logged_in %}
+        <a class="btn-landing btn-landing-primary" href="{{ app_home }}">Continue to dashboard</a>
+        {% else %}
+        <a class="btn-landing btn-landing-primary" href="{{ url_for('register_view') }}">Create your account</a>
+        <a class="btn-landing btn-landing-ghost" href="{{ url_for('login_view') }}">Sign in</a>
+        {% endif %}
+      </div>
+    </section>
+    <aside class="landing-preview" aria-label="Degree progress preview">
+      <div class="landing-preview-heading">
+        <span>Degree progress</span>
+        <span class="preview-status">On track</span>
+      </div>
+      <div class="preview-label">BSc Winning at Life</div>
+      <div class="preview-degree">Progress overview</div>
+      <div class="preview-progress-track" role="img" aria-label="Example degree progress: 70 percent">
+        <div class="preview-progress-fill"></div>
+      </div>
+      <div class="preview-progress-caption"><span>65 of 93 credits</span><span>70%</span></div>
+      <div class="preview-divider"></div>
+      <div class="preview-label">Next in your plan</div>
+      <div class="preview-course"><span>Core Course</span><span>3 credits</span></div>
+      <div class="preview-course"><span>Elective Course</span><span>3 credits</span></div>
+    </aside>
   </main>
 
   <footer class="landing-foot">
-    Demo logins after <code>python manage.py init</code>: bob / bobpass · admin / adminpass
+    Thoughtful tools for a confident path to graduation.
   </footer>
 </div>
 {% endblock %}

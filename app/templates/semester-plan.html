@@ -1,0 +1,207 @@
+{% extends "authenticated-base.html" %}
+{% block title %}Semester plan | MyAdvisor{% endblock %}
+
+{% block subpage_content %}
+<main class="container-fluid py-2">
+  <div class="mb-4">
+    <p class="landing-kicker mb-2">Planning</p>
+    <h1 class="h3 mb-1">Plan your semester</h1>
+    <p class="text-muted mb-0">Choose a semester, select courses, and save your draft or submit it for approval.</p>
+  </div>
+
+  {% if not plan_view.student %}
+  <div class="alert alert-light border" role="status">
+    <h2 class="h6">Student profile unavailable</h2>
+    <p class="mb-0">{{ plan_view.message }}</p>
+  </div>
+  {% elif plan_view.semesters %}
+  <section class="card border-0 shadow-sm mb-4" aria-labelledby="semester-choice-heading">
+    <div class="card-body p-4">
+      <h2 class="h5" id="semester-choice-heading">Choose your semester</h2>
+      <form id="semester-choice-form" method="get" action="{{ url_for('semester_plan_view') }}" class="row g-3 align-items-end">
+        <div class="col-md-6">
+          <label class="form-label" for="academic-year">Academic year</label>
+          <select class="form-select" id="academic-year" name="academic_year" required>
+            {% for year in plan_view.academic_years %}
+            <option value="{{ year }}" {% if plan_view.current_semester and year == plan_view.current_semester.year %}selected{% endif %}>
+              {{ year }}/{{ year + 1 }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="semester-id">Semester</label>
+          <select class="form-select" id="semester-number" name="semester_number" required>
+            {% for number in [1, 2, 3] %}
+            <option value="{{ number }}" data-years="{{ plan_view.term_years[number] | join(',') }}"
+                    {% if plan_view.semester_number == number %}selected{% endif %}>
+              Semester {{ number }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  {% if plan_view.current_plan %}
+  <section class="card border-0 shadow-sm mb-4" aria-labelledby="plan-heading">
+    <div class="card-body p-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+          <p class="text-muted small mb-1">Academic year and semester</p>
+          <h2 class="h5 mb-1" id="plan-heading">{{ plan_view.current_semester.semester_name }}</h2>
+          <span class="badge rounded-pill text-bg-light text-capitalize">
+            {{ 'not saved' if plan_view.current_plan.status == 'planning' else plan_view.current_plan.status.replace('_', ' ') }}
+          </span>
+        </div>
+        <a class="btn btn-outline-secondary" href="{{ url_for('my_plans_view') }}">My plans</a>
+      </div>
+
+      {% if plan_view.current_plan.status == 'revision_required' and plan_view.latest_approval_request and plan_view.latest_approval_request.advisor_comments %}
+      <div class="alert alert-warning" role="status">
+        <h3 class="h6">Advisor requested a revision</h3>
+        <p class="mb-0">{{ plan_view.latest_approval_request.advisor_comments }}</p>
+      </div>
+      {% endif %}
+
+      {% if plan_view.current_plan.status in ['planning', 'draft', 'revision_required'] %}
+      <form class="mb-4" method="get" action="{{ url_for('semester_plan_view') }}">
+        <input type="hidden" name="plan_id" value="{{ plan_view.current_plan.id }}">
+        <label class="form-label" for="course-search">Available courses</label>
+        <div class="input-group">
+          <input class="form-control" id="course-search" name="q" type="search"
+                 value="{{ plan_view.search_query }}" placeholder="Search by course code or name">
+          <button class="btn btn-outline-secondary" type="submit">Search</button>
+        </div>
+      </form>
+
+      <div class="row g-4">
+        <div class="col-lg-7">
+          <h3 class="h6 mb-2">Available courses</h3>
+          {% if plan_view.course_offerings %}
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Course code</th>
+                  <th scope="col">Name</th>
+                  <th scope="col">Credits</th>
+                  <th scope="col">Section</th>
+                  <th scope="col"><span class="visually-hidden">Action</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for offering, course in plan_view.course_offerings %}
+                <tr>
+                  <td class="fw-semibold">{{ course.course_code }}</td>
+                  <td>{{ course.title }}</td>
+                  <td>{{ course.credits }}</td>
+                  <td>{{ offering.section }}</td>
+                  <td>
+                    <form method="post" action="{{ url_for('semester_plan_add_course', plan_id=plan_view.current_plan.id) }}">
+                      <input type="hidden" name="offering_id" value="{{ offering.id }}">
+                      <button class="btn btn-sm btn-outline-secondary" type="submit" aria-label="Add {{ course.course_code }}">Add</button>
+                    </form>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <p class="text-muted">No available course offerings match this search.</p>
+          {% endif %}
+        </div>
+
+        <div class="col-lg-5">
+          <h3 class="h6 mb-2">Your selected courses</h3>
+          {% if plan_view.selected_offerings %}
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Course</th>
+                  <th scope="col">Credits</th>
+                  <th scope="col"><span class="visually-hidden">Action</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for selection, offering, course in plan_view.selected_offerings %}
+                <tr>
+                  <td>
+                    <span class="fw-semibold">{{ course.course_code }}</span>
+                    <span class="d-block small text-muted">{{ course.title }} · Section {{ offering.section }}</span>
+                  </td>
+                  <td>{{ course.credits }}</td>
+                  <td>
+                    <form method="post" action="{{ url_for('semester_plan_remove_course', plan_id=plan_view.current_plan.id, selection_id=selection.id) }}">
+                      <button class="btn btn-sm btn-outline-secondary" type="submit" aria-label="Remove {{ course.course_code }}">Remove</button>
+                    </form>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <p class="text-muted">No courses selected yet.</p>
+          {% endif %}
+          <p class="fw-semibold">Total credits for planned semester: {{ plan_view.planned_credits }}</p>
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <form method="post" action="{{ url_for('semester_plan_save', plan_id=plan_view.current_plan.id) }}">
+          <button class="btn btn-outline-secondary" type="submit">Save as draft</button>
+        </form>
+        <a class="btn btn-primary" href="{{ url_for('semester_plan_summary_view', plan_id=plan_view.current_plan.id) }}">Review and submit</a>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">This plan is {{ plan_view.current_plan.status.replace('_', ' ') }} and can no longer be edited.</p>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+  {% else %}
+  <section class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      <p class="mb-0">No current or upcoming semesters are available for planning.</p>
+    </div>
+  </section>
+  {% endif %}
+</main>
+{% endblock %}
+
+{% block subpage_scripts %}
+<script>
+  const yearSelect = document.getElementById("academic-year");
+  const semesterSelect = document.getElementById("semester-number");
+  const semesterForm = document.getElementById("semester-choice-form");
+
+  if (yearSelect && semesterSelect && semesterForm) {
+    const semesterOptions = Array.from(semesterSelect.options);
+
+    function updateSemesters() {
+      const matchingOptions = semesterOptions.filter(
+        (option) => option.dataset.years.split(",").includes(yearSelect.value)
+      );
+      semesterOptions.forEach((option) => {
+        option.disabled = !option.dataset.years.split(",").includes(yearSelect.value);
+      });
+      if (matchingOptions.length > 0 && semesterSelect.selectedOptions[0].disabled) {
+        semesterSelect.value = matchingOptions[0].value;
+      }
+    }
+
+    yearSelect.addEventListener("change", () => {
+      updateSemesters();
+      semesterForm.requestSubmit();
+    });
+    semesterSelect.addEventListener("change", () => {
+      semesterForm.requestSubmit();
+    });
+    updateSemesters();
+  }
+</script>
+{% endblock %}

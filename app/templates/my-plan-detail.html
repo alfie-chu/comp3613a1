@@ -1,0 +1,63 @@
+{% extends "authenticated-base.html" %}
+{% block title %}Semester plan details | MyAdvisor{% endblock %}
+
+{% block subpage_content %}
+<main class="container-fluid py-2">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <p class="landing-kicker mb-2">Planning history</p>
+      <h1 class="h3 mb-1">{{ plan_detail.semester.semester_name }}</h1>
+      <p class="text-muted mb-0">
+        Status: <span class="text-capitalize">{{ plan_detail.plan.status.replace('_', ' ') }}</span>
+      </p>
+    </div>
+    <a class="btn btn-outline-secondary" href="{{ url_for('my_plans_view') }}">Back to My Plans</a>
+  </div>
+
+  <section class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      {% if plan_detail.latest_approval_request and plan_detail.latest_approval_request.advisor_comments %}
+      <div class="alert alert-light border" role="status">
+        <h2 class="h6">Advisor comments</h2>
+        <p class="mb-0">{{ plan_detail.latest_approval_request.advisor_comments }}</p>
+      </div>
+      {% endif %}
+      <h2 class="h5 mb-3">Selected courses</h2>
+      {% if plan_detail.selected_offerings %}
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead>
+            <tr>
+              <th scope="col">Course code</th>
+              <th scope="col">Name</th>
+              <th scope="col">Credits</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for selection, offering, course in plan_detail.selected_offerings %}
+            <tr>
+              <td>{{ course.course_code }} · Section {{ offering.section }}</td>
+              <td>{{ course.title }}</td>
+              <td>{{ course.credits }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row" colspan="2">Total credits</th>
+              <td class="fw-semibold">{{ plan_detail.planned_credits }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">No courses were recorded for this plan.</p>
+      {% endif %}
+
+      {% if plan_detail.can_edit %}
+      <a class="btn btn-primary mt-3" href="{{ url_for('semester_plan_view').include_query_params(plan_id=plan_detail.plan.id) }}">View/Edit Plan</a>
+      {% endif %}
+    </div>
+  </section>
+</main>
+{% endblock %}

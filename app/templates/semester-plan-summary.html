@@ -1,0 +1,81 @@
+{% extends "authenticated-base.html" %}
+{% block title %}Review semester plan | MyAdvisor{% endblock %}
+
+{% block subpage_content %}
+<main class="container-fluid py-2">
+  <div class="mb-4">
+    <p class="landing-kicker mb-2">Before you submit</p>
+    <h1 class="h3 mb-1">Semester plan summary</h1>
+    <p class="text-muted mb-0">
+      {{ summary.semester.semester_name }} · {{ summary.plan.status.replace('_', ' ') }}
+    </p>
+  </div>
+
+  <section class="card border-0 shadow-sm mb-4" aria-labelledby="summary-courses-heading">
+    <div class="card-body p-4">
+      <h2 class="h5 mb-3" id="summary-courses-heading">Selected courses</h2>
+      {% if summary.selected_offerings %}
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead>
+            <tr>
+              <th scope="col">Course code</th>
+              <th scope="col">Name</th>
+              <th scope="col">Credits</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for selection, offering, course in summary.selected_offerings %}
+            <tr>
+              <td>{{ course.course_code }} · Section {{ offering.section }}</td>
+              <td>{{ course.title }}</td>
+              <td>{{ course.credits }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row" colspan="2">Total credits</th>
+              <td class="fw-semibold">{{ summary.planned_credits }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">No courses have been added to this plan.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card border-0 shadow-sm mb-4" aria-labelledby="requirements-check-heading">
+    <div class="card-body p-4">
+      <h2 class="h5 mb-3" id="requirements-check-heading">Degree requirements</h2>
+      {% if summary.requirements_satisfied %}
+      <p class="mb-0">Prerequisite requirements are satisfied for the selected courses.</p>
+      {% else %}
+      <div class="alert alert-warning mb-0" role="alert">
+        <p class="fw-semibold mb-2">Review these prerequisite requirements before submitting:</p>
+        <ul class="mb-0">
+          {% for warning in summary.prerequisite_warnings %}
+          <li>{{ warning.course_code }} requires {{ warning.prerequisite_code }} to be completed first.</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('semester_plan_view').include_query_params(plan_id=summary.plan.id) }}">Back to plan</a>
+    {% if summary.can_edit %}
+    <form method="post" action="{{ url_for('semester_plan_submit', plan_id=summary.plan.id) }}">
+      <button class="btn btn-primary" type="submit" {% if not summary.selected_offerings %}disabled{% endif %}>
+        Submit for approval
+      </button>
+    </form>
+    {% else %}
+    <a class="btn btn-primary" href="{{ url_for('my_plans_view') }}">View My Plans</a>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}
