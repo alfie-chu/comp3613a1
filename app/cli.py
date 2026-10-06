@@ -169,8 +169,26 @@ def cmd_seed(args: argparse.Namespace) -> None:
             ("COMP 1001", "Introduction to Computing", 3, "Core", "1000"),
             ("COMP 1602", "Programming Fundamentals", 3, "Core", "1000"),
             ("MATH 1140", "Discrete Mathematics", 3, "Mathematics", "1000"),
+            ("COMP 1710", "Computer Systems", 3, "Core", "1000"),
+            ("MATH 1210", "Calculus for Computing", 3, "Mathematics", "1000"),
+            ("STAT 2001", "Statistics for Computing", 3, "Mathematics", "2000"),
             ("COMP 2610", "Data Structures", 3, "Core", "2000"),
+            ("COMP 2620", "Database Systems", 3, "Core", "2000"),
+            ("COMP 2630", "Computer Networks", 3, "Core", "2000"),
+            ("COMP 2640", "Web Application Development", 3, "Core", "2000"),
+            ("COMP 2650", "Human-Computer Interaction", 3, "Elective", "2000"),
             ("COMP 3010", "Software Engineering", 3, "Core", "3000"),
+            ("COMP 3005", "Operating Systems", 3, "Core", "3000"),
+            (
+                "COMP 3015",
+                "Introduction to Artificial Intelligence",
+                3,
+                "Elective",
+                "3000",
+            ),
+            ("COMP 3020", "Cybersecurity Fundamentals", 3, "Elective", "3000"),
+            ("COMP 3030", "Mobile Application Development", 3, "Elective", "3000"),
+            ("COMP 3040", "Data Analytics", 3, "Elective", "3000"),
         ]
         courses_by_code: dict[str, Course] = {}
         for course_code, title, credits, category, level in course_data:
@@ -229,7 +247,14 @@ def cmd_seed(args: argparse.Namespace) -> None:
                     )
                 )
 
-        for course_code in ("COMP 2610", "COMP 3010"):
+        requirement_data = (
+            ("COMP 2610", "Core"),
+            ("COMP 3010", "Core"),
+            ("COMP 2620", "Core"),
+            ("COMP 2630", "Core"),
+            ("COMP 3005", "Core"),
+        )
+        for course_code, requirement_type in requirement_data:
             course = courses_by_code[course_code]
             requirement = session.exec(
                 select(DegreeRequirement).where(
@@ -242,7 +267,7 @@ def cmd_seed(args: argparse.Namespace) -> None:
                     DegreeRequirement(
                         degree_plan_id=degree_plan.id,
                         course_id=course.id,
-                        requirement_type="Core",
+                        requirement_type=requirement_type,
                         is_required=True,
                         completion_rule="Complete the course",
                     )
@@ -293,6 +318,15 @@ def cmd_seed(args: argparse.Namespace) -> None:
         prerequisite_pairs = (
             ("COMP 2610", "COMP 1602"),
             ("COMP 3010", "COMP 2610"),
+            ("COMP 2620", "COMP 1602"),
+            ("COMP 2630", "COMP 1602"),
+            ("COMP 2640", "COMP 1602"),
+            ("COMP 3005", "COMP 2610"),
+            ("COMP 3015", "COMP 2610"),
+            ("COMP 3020", "COMP 2610"),
+            ("COMP 3030", "COMP 2640"),
+            ("COMP 3040", "STAT 2001"),
+            ("STAT 2001", "MATH 1140"),
         )
         for course_code, prerequisite_code in prerequisite_pairs:
             course = courses_by_code[course_code]

@@ -212,6 +212,7 @@ Phase 5 polish: sign-in and registration now use a larger, high-contrast arrow-o
 The MyAdvisor logo and wordmark are centered in the sign-in and registration panels; the back arrow remains separately aligned at the left.
 Student confirmed the sign-in and registration alignment looks right.
 Landing-page Degree Progress preview labels updated as requested: “BSc Winning at Life,” “Core Course,” and “Elective Course.”
+Phase 6 data update: expanded the idempotent demo catalogue from 5 to 17 courses, created offerings for the added courses, and added prerequisite relationships plus three additional required core courses to Bob's existing BSc Computer Science plan. The Render startup command runs `init --no-drop`, so a subsequent deployment/restart adds missing seed rows without dropping existing database data. The selected scope keeps Bob's existing degree programme rather than adding separate programme records.
 
 ## Implementation notes
 
@@ -557,7 +558,9 @@ note: Pending-review route calls the approval service and returns rows to its te
 
 Phase 6. Public Render URL (not localhost). Markers open this to mark the three workflows.
 
-https://
+https://myadvisor-cot7.onrender.com
+
+The Render web service is live and `/health` returns `{"ok":true}`. The `faststarter-db` PostgreSQL instance is provisioned, but is not yet linked to the web service; the app currently uses temporary SQLite until `DATABASE_URI` is connected in Render.
 
 ## Logins
 
