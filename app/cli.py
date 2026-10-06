@@ -61,6 +61,8 @@ def cmd_seed(args: argparse.Namespace) -> None:
         CoursePrerequisite,
         DegreePlan,
         DegreeRequirement,
+        ProgrammeCatalogue,
+        ProgrammeCourseMapping,
         Semester,
     )
     from app.models.approval import Advisor
@@ -136,7 +138,7 @@ def cmd_seed(args: argparse.Namespace) -> None:
             degree_plan = DegreePlan(
                 programme_name="BSc Computer Science",
                 total_credits_required=93,
-                start_year=2026,
+                start_year=2025,
                 end_year=2029,
                 status="active",
             )
@@ -164,6 +166,11 @@ def cmd_seed(args: argparse.Namespace) -> None:
 
         if student.id is None or degree_plan.id is None:
             raise RuntimeError("Bob's student profile and degree plan must be saved.")
+        if (
+            student.user_id == bob.id
+            and degree_plan.programme_name == "BSc Computer Science"
+        ):
+            degree_plan.start_year = 2025
 
         course_data = [
             ("COMP 1001", "Introduction to Computing", 3, "Core", "1000"),
@@ -209,6 +216,106 @@ def cmd_seed(args: argparse.Namespace) -> None:
         if any(course.id is None for course in courses_by_code.values()):
             raise RuntimeError("Unable to save the sample course catalogue.")
 
+        programme_data = (
+            (
+                "BSc Computer Science",
+                93,
+                3,
+                {
+                    "COMP 1001": ("Core", True),
+                    "COMP 1602": ("Core", True),
+                    "COMP 1710": ("Core", True),
+                    "COMP 2610": ("Core", True),
+                    "COMP 2620": ("Core", True),
+                    "COMP 2630": ("Core", True),
+                    "COMP 2640": ("Core", True),
+                    "COMP 3010": ("Core", True),
+                    "COMP 3005": ("Core", True),
+                    "COMP 2650": ("Elective", False),
+                    "COMP 3015": ("Elective", False),
+                    "COMP 3020": ("Elective", False),
+                    "COMP 3030": ("Elective", False),
+                    "COMP 3040": ("Elective", False),
+                },
+            ),
+            (
+                "BSc Information Technology",
+                90,
+                3,
+                {
+                    "COMP 1001": ("Core", True),
+                    "COMP 1602": ("Core", True),
+                    "COMP 1710": ("Core", True),
+                    "COMP 2620": ("Core", True),
+                    "COMP 2630": ("Core", True),
+                    "COMP 2640": ("Core", True),
+                    "COMP 3020": ("Core", True),
+                    "COMP 3030": ("Core", True),
+                    "COMP 3010": ("Core", True),
+                    "COMP 2650": ("Elective", False),
+                    "COMP 3040": ("Elective", False),
+                },
+            ),
+            (
+                "BSc Data Science",
+                93,
+                3,
+                {
+                    "COMP 1001": ("Core", True),
+                    "COMP 1602": ("Core", True),
+                    "MATH 1140": ("Core", True),
+                    "MATH 1210": ("Core", True),
+                    "STAT 2001": ("Core", True),
+                    "COMP 2610": ("Core", True),
+                    "COMP 2620": ("Core", True),
+                    "COMP 3015": ("Core", True),
+                    "COMP 3040": ("Core", True),
+                    "COMP 2650": ("Elective", False),
+                    "COMP 3020": ("Elective", False),
+                },
+            ),
+        )
+        for programme_name, credit_total, duration, mapping_data in programme_data:
+            programme = session.exec(
+                select(ProgrammeCatalogue).where(
+                    ProgrammeCatalogue.programme_name == programme_name
+                )
+            ).one_or_none()
+            if programme is None:
+                programme = ProgrammeCatalogue(
+                    programme_name=programme_name,
+                    total_credits_required=credit_total,
+                    standard_duration_years=duration,
+                    status="active",
+                )
+                session.add(programme)
+                session.flush()
+            if programme.id is None:
+                raise RuntimeError(
+                    f"Unable to save programme {programme_name}."
+                )
+            for course_code, (requirement_type, is_required) in mapping_data.items():
+                course = courses_by_code[course_code]
+                mapping = session.exec(
+                    select(ProgrammeCourseMapping).where(
+                        ProgrammeCourseMapping.programme_id == programme.id,
+                        ProgrammeCourseMapping.course_id == course.id,
+                    )
+                ).one_or_none()
+                if mapping is None:
+                    session.add(
+                        ProgrammeCourseMapping(
+                            programme_id=programme.id,
+                            course_id=course.id,
+                            requirement_type=requirement_type,
+                            is_required=is_required,
+                            completion_rule="Complete the course",
+                        )
+                    )
+            if programme.programme_name == degree_plan.programme_name:
+                degree_plan.programme_id = programme.id
+        session.flush()
+
         history_semester = session.exec(
             select(Semester).where(
                 Semester.semester_name == "Semester 2 2025/2026",
@@ -241,6 +348,8 @@ def cmd_seed(args: argparse.Namespace) -> None:
                         student_id=student.id,
                         course_id=course.id,
                         semester_id=history_semester.id,
+                        academic_year=2025,
+                        semester_number=2,
                         grade="B+",
                         completed_at=datetime(2026, 5, 15),
                         is_transfer=False,

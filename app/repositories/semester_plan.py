@@ -7,6 +7,10 @@ from app.models.degree_progress import (
     Course,
     CourseCompletion,
     CoursePrerequisite,
+    DegreePlan,
+    DegreeRequirement,
+    ProgrammeCatalogue,
+    ProgrammeCourseMapping,
     Semester,
 )
 from app.models.approval import ApprovalRequest
@@ -20,6 +24,41 @@ class SemesterPlanRepository:
     def get_student_by_user_id(self, user_id: int) -> Student | None:
         statement = select(Student).where(Student.user_id == user_id)
         return self.db.exec(statement).one_or_none()
+
+    def get_programme_course_ids_for_student(
+        self,
+        student_id: int,
+    ) -> set[int]:
+        plan_statement = (
+            select(DegreePlan)
+            .join(Student, Student.degree_plan_id == DegreePlan.id)
+            .where(Student.id == student_id)
+        )
+        degree_plan = self.db.exec(plan_statement).one_or_none()
+        if degree_plan is None:
+            return set()
+
+        programme_id = degree_plan.programme_id
+        if programme_id is None:
+            programme_statement = (
+                select(ProgrammeCatalogue.id)
+                .where(
+                    ProgrammeCatalogue.programme_name
+                    == degree_plan.programme_name
+                )
+                .order_by(ProgrammeCatalogue.id)
+            )
+            programme_id = self.db.exec(programme_statement).first()
+
+        if programme_id is not None:
+            course_statement = select(ProgrammeCourseMapping.course_id).where(
+                ProgrammeCourseMapping.programme_id == programme_id
+            )
+        else:
+            course_statement = select(DegreeRequirement.course_id).where(
+                DegreeRequirement.degree_plan_id == degree_plan.id
+            )
+        return set(self.db.exec(course_statement).all())
 
     def get_semester_plans_by_student_id(
         self,
@@ -107,8 +146,9 @@ class SemesterPlanRepository:
         self,
         semester_ids: list[int],
         search_query: str = "",
+        allowed_course_ids: set[int] | None = None,
     ) -> list[tuple[CourseOffering, Course]]:
-        if not semester_ids:
+        if not semester_ids or not allowed_course_ids:
             return []
 
         statement = (
@@ -120,6 +160,7 @@ class SemesterPlanRepository:
             )
             .order_by(Course.course_code, CourseOffering.section)
         )
+        statement = statement.where(Course.id.in_(allowed_course_ids))
         if search_query:
             pattern = f"%{search_query.strip()}%"
             statement = statement.where(

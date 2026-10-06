@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi import status
+from datetime import date
+
+from fastapi import Request
+from fastapi.responses import HTMLResponse
 from app.dependencies.session import SessionDep
-from app.dependencies.auth import AuthDep, IsUserLoggedIn, get_current_user, is_admin
+from app.dependencies.auth import AuthDep
 from app.repositories.degree_progress import DegreeProgressRepository
 from app.repositories.semester_plan import SemesterPlanRepository
 from app.services.degree_progress import DegreeProgressService
@@ -14,7 +15,7 @@ from . import router, templates
 async def user_home_view(
     request: Request,
     user: AuthDep,
-    db:SessionDep
+    db: SessionDep,
 ):
     repository = DegreeProgressRepository(db)
     service = DegreeProgressService(repository)
@@ -22,6 +23,8 @@ async def user_home_view(
     plan_repository = SemesterPlanRepository(db)
     plan_service = SemesterPlanService(plan_repository)
     current_plan = plan_service.get_dashboard_summary(user.id)
+    programmes = service.get_active_programmes()
+    start_years = range(date.today().year - 5, date.today().year + 1)
 
     return templates.TemplateResponse(
         request=request, 
@@ -30,5 +33,7 @@ async def user_home_view(
             "user": user,
             "progress": progress,
             "current_plan": current_plan,
+            "programmes": programmes,
+            "start_years": start_years,
         }
     )

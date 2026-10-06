@@ -1,12 +1,14 @@
 from datetime import date, datetime
 
 from sqlmodel import Field, SQLModel
+from sqlalchemy import UniqueConstraint
 
 
 class DegreePlan(SQLModel, table=True):
     __tablename__ = "degree_plan"
 
     id: int | None = Field(default=None, primary_key=True)
+    programme_id: int | None = Field(default=None, foreign_key="programme_catalogue.id", nullable=True)
     programme_name: str
     total_credits_required: int
     start_year: int
@@ -58,11 +60,36 @@ class Semester(SQLModel, table=True):
 
 class CourseCompletion(SQLModel, table=True):
     __tablename__ = "course_completion"
+    __table_args__ = (UniqueConstraint("student_id", "course_id"),)
 
     id: int | None = Field(default=None, primary_key=True)
     student_id: int = Field(foreign_key="student.id")
     course_id: int = Field(foreign_key="course.id")
     semester_id: int = Field(foreign_key="semester.id")
+    semester_id: int = Field(foreign_key="semester.id")
+    academic_year: int
+    semester_number: int
     grade: str
     completed_at: datetime
     is_transfer: bool = False
+
+
+class ProgrammeCatalogue(SQLModel, table=True):
+    __tablename__ = "programme_catalogue"
+
+    id: int | None = Field(default=None, primary_key=True)
+    programme_name: str
+    total_credits_required: int
+    standard_duration_years: int
+    status: str = "active"
+
+class ProgrammeCourseMapping(SQLModel, table=True):
+    __tablename__ = "programme_course_mapping"
+    __table_args__ = (UniqueConstraint("programme_id", "course_id"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    programme_id: int = Field(foreign_key="programme_catalogue.id", index=True)
+    course_id: int = Field(foreign_key="course.id", index=True)
+    requirement_type: str
+    is_required: bool
+    completion_rule: str

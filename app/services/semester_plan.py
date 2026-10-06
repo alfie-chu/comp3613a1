@@ -145,6 +145,7 @@ class SemesterPlanService:
         course_offerings = self.repository.get_course_offerings_by_semester_ids(
             semester_ids,
             search_query,
+            self.repository.get_programme_course_ids_for_student(student.id),
         )
         selected_course_ids = {
             offering.course_id for _, offering, _ in selected_offerings

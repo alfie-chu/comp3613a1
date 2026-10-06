@@ -152,6 +152,8 @@ erDiagram
     int student_id FK
     int course_id FK
     int semester_id FK
+    int academic_year
+    int semester_number
     string grade
     datetime completed_at
     bool is_transfer
@@ -225,6 +227,78 @@ Phase 6 data update: expanded the idempotent demo catalogue from 5 to 17 courses
 - Student verification: landing page loaded. Dashboard feedback: the progress card was too large, and the bottom Degree shortcut duplicated the detail action where the current semester plan belongs. The card width has been reduced again; the current-plan panel is part of the semester-planning workflow.
 - After the first adjustment, the student reported the boxes now felt too narrow horizontally. They reported no visible change after the first widening attempt, so both cards now have an explicit 56rem responsive width and the stylesheet URL was versioned to bust browser cache. Student confirmed the cards look wider and that initialization and semester-plan screens work.
 - The student later confirmed the revised dashboard width and reported the implemented screens looked right.
+- Student requested self-service student profile setup after signup, completed-course entry, and programme-specific course offerings. Selected a reusable programme catalogue with explicit course mappings; completed courses must be selected from the catalogue so credits are known; grade options are A+, A, A-, B+, B, B-, C+, C, C-, D+, D, and F. Start year sets the individual degree plan dates; earned credits remain derived only from completed-course records.
+- Post-deployment profile-setup enhancement: after signing in, a student without a profile now gets a setup form for student ID, first/last name, degree programme, and start year (current year plus previous five years). Account email is taken from the authenticated account. The programme catalogue stores its duration and course mappings; setup creates a student-specific plan, derives end year from start year, and copies the programme requirements. Existing plans keep a nullable programme-catalogue link through a no-drop schema migration. Earned credits remain based on entered completed-course records, not an estimate from the start year. Added three idempotent demo programme catalogues and programme-course mappings to the seed path. Local verification by the student is pending.
+
+<!-- student-build:code-check
+workflow: Track degree progress / student profile setup
+form: choice
+layer: model
+architecture_ok: yes
+implement_confidence: 0.60
+passed: yes
+note: Chose a reusable programme catalogue with explicit programme-to-course mappings.
+-->
+
+<!-- student-build:code-check
+workflow: Track degree progress / student profile setup
+form: choice
+layer: model
+architecture_ok: yes
+implement_confidence: 0.60
+passed: yes
+note: Chose programme-specific duration; start year sets plan dates while credits remain based on completed courses.
+-->
+
+<!-- student-build:code-check
+workflow: Track degree progress / student profile setup
+form: choice
+layer: other
+architecture_ok: yes
+implement_confidence: 0.60
+passed: yes
+note: Chose to allow completed-course entries only for catalogue courses, using stored course credits.
+-->
+
+<!-- student-build:code-check
+workflow: Track degree progress / student profile setup
+form: mcq
+layer: service
+architecture_ok: yes
+implement_confidence: 0.60
+passed: yes
+note: Identified the service as the layer coordinating profile setup.
+-->
+
+<!-- student-build:code-check
+workflow: Track degree progress / student profile setup
+form: snippet
+layer: model
+architecture_ok: yes
+implement_confidence: 0.60
+passed: yes
+note: Added programme catalogue and mapping models, nullable DegreePlan programme link, duration, and unique mapping constraint.
+-->
+
+<!-- student-build:code-check
+workflow: Track degree progress / student profile setup
+form: snippet
+layer: router
+architecture_ok: yes
+implement_confidence: 0.50
+passed: partial
+note: Attempted a thin profile route; it needed corrections to bind programme ID, use authenticated account data, call the matching service API, and redirect.
+-->
+
+<!-- student-build:code-check
+workflow: Track degree progress / student profile setup
+form: snippet
+layer: repository
+architecture_ok: yes
+implement_confidence: 0.60
+passed: yes
+note: Implemented programme lookup and profile creation with derived end year and copied mapped requirements after iterative review.
+-->
 
 <!-- student-build:code-check
 workflow: Track degree progress
@@ -276,6 +350,38 @@ passed: yes
 note: Thin handler constructs repository and service and passes the result to the template; no query logic in route.
 -->
 
+Completed-course entry: a button in the Completed courses card opens an inline form with programme-mapped courses not yet completed, the agreed grade choices, semesters 1–3, and academic years from the plan start year through the current year. The service validates membership, duplicates, grade, semester, and year before delegating persistence. The repository keeps the existing `semester_id` relation and stores the selected academic year/semester number; the no-drop migration backfills these fields for existing records. Successful saves return to Degree, where credits/progress and term details refresh. The profile setup POST now also redirects with a success flash instead of ending without a response. The Bob demo plan starts in 2025 to match its seeded 2025/2026 completion records, so both 2025/2026 and 2026/2027 are available in 2026. The student confirmed the completed-course form opens and saves and verified both academic-year choices after restarting the app.
+
+<!-- student-build:code-check
+workflow: Track degree progress / record completed course
+form: snippet
+layer: model
+architecture_ok: yes
+implement_confidence: 0.60
+passed: yes
+note: Added unique student/course completion constraint and completion-year/semester fields while preserving the semester relation.
+-->
+
+<!-- student-build:code-check
+workflow: Track degree progress / record completed course
+form: snippet
+layer: router
+architecture_ok: yes
+implement_confidence: 0.60
+passed: yes
+note: Added a thin completion POST handler that binds the form and delegates validation/persistence to the service.
+-->
+
+<!-- student-build:code-check
+workflow: Track degree progress / record completed course
+form: snippet
+layer: service
+architecture_ok: yes
+implement_confidence: 0.50
+passed: partial
+note: Student attempted service validation; repository method names and the year/grade rules needed correction before the call matched the repository API.
+-->
+
 ### Plan semester course selections (student)
 
 - Students choose when to start a plan; each semester offering is listed as its own selectable course row.
@@ -283,6 +389,7 @@ note: Thin handler constructs repository and service and passes the result to th
 - The service snippet represents an unlinked student account as an explicit page state.
 - Added a self-referencing `COURSE_PREREQUISITE` bridge so the pre-submit summary can check course prerequisites.
 - The semester editor supports searching offerings, adding/removing sections, saving drafts, and reviewing credits/prerequisite warnings before submission. `My Plans` lists plan history and details.
+- Available offerings are filtered to the student's programme mappings; a legacy plan without a programme ID resolves an exact catalogue-name match first, then falls back to that plan's existing degree requirements.
 - The dashboard now shows the current plan and draft status with View/Edit, or Start when no plan exists. Initialization seeds Bob with a draft plan and sample offerings.
 - Existing databases upgrade the `semester_plan.submitted_at` column on initialization, so `python manage.py init --no-drop` preserves existing data.
 - Existing databases also add the `advisor.user_id` association and unique index during no-drop initialization before creating the seeded admin reviewer profile.

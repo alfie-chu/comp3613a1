@@ -2,6 +2,7 @@ import logging
 import threading
 import time
 from contextlib import contextmanager
+from datetime import date
 
 from sqlalchemy import MetaData, inspect, text
 from sqlalchemy.engine.reflection import Inspector
@@ -81,6 +82,129 @@ def _upgrade_semester_plan_schema() -> None:
                     "ix_advisor_user_id ON advisor (user_id)"
                 )
             )
+
+    if inspector.has_table("degree_plan"):
+        columns = {
+            column["name"] for column in inspector.get_columns("degree_plan")
+        }
+        if "programme_id" not in columns:
+            with engine.begin() as connection:
+                connection.execute(
+                    text(
+                        "ALTER TABLE degree_plan ADD COLUMN programme_id "
+                        "INTEGER REFERENCES programme_catalogue(id)"
+                    )
+                )
+            logger.info("Added nullable degree_plan.programme_id column")
+
+    _upgrade_course_completion_schema()
+    _upgrade_bob_demo_plan_start_year()
+
+
+def _upgrade_course_completion_schema() -> None:
+    inspector = inspect(engine)
+    if not inspector.has_table("course_completion"):
+        return
+
+    columns = {
+        column["name"] for column in inspector.get_columns("course_completion")
+    }
+    added_columns: set[str] = set()
+    with engine.begin() as connection:
+        if "academic_year" not in columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE course_completion ADD COLUMN academic_year "
+                    f"INTEGER NOT NULL DEFAULT {date.today().year}"
+                )
+            )
+            added_columns.add("academic_year")
+
+        if "semester_number" not in columns:
+            connection.execute(
+                text(
+                    "ALTER TABLE course_completion ADD COLUMN semester_number "
+                    "INTEGER NOT NULL DEFAULT 1"
+                )
+            )
+            added_columns.add("semester_number")
+
+        if added_columns and "semester_id" in columns:
+            completions = connection.execute(
+                text(
+                    "SELECT cc.id, s.year, s.semester_name "
+                    "FROM course_completion cc "
+                    "LEFT JOIN semester s ON s.id = cc.semester_id"
+                )
+            ).all()
+            for completion_id, academic_year, semester_name in completions:
+                if academic_year is None or semester_name is None:
+                    raise RuntimeError(
+                        "Cannot migrate course completion metadata: a completion "
+                        "has no matching semester."
+                    )
+
+                updates = {}
+                if "academic_year" in added_columns:
+                    updates["academic_year"] = academic_year
+                if "semester_number" in added_columns:
+                    parts = semester_name.split()
+                    if (
+                        len(parts) < 2
+                        or parts[0] != "Semester"
+                        or parts[1] not in {"1", "2", "3"}
+                    ):
+                        raise RuntimeError(
+                            "Cannot migrate course completion metadata: "
+                            f"unrecognized semester name {semester_name!r}."
+                        )
+                    updates["semester_number"] = int(parts[1])
+
+                assignments = ", ".join(
+                    f"{column} = :{column}" for column in updates
+                )
+                connection.execute(
+                    text(
+                        "UPDATE course_completion SET "
+                        f"{assignments} WHERE id = :completion_id"
+                    ),
+                    {**updates, "completion_id": completion_id},
+                )
+
+    if "academic_year" in added_columns:
+        logger.info("Added course_completion.academic_year column")
+    if "semester_number" in added_columns:
+        logger.info("Added course_completion.semester_number column")
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS "
+                "ix_course_completion_student_course "
+                "ON course_completion (student_id, course_id)"
+            )
+        )
+
+
+def _upgrade_bob_demo_plan_start_year() -> None:
+    with engine.begin() as connection:
+        result = connection.execute(
+            text(
+                "UPDATE degree_plan SET start_year = 2025 "
+                "WHERE programme_name = 'BSc Computer Science' "
+                "AND start_year = 2026 "
+                "AND id IN ("
+                "SELECT s.degree_plan_id FROM student s "
+                'JOIN "user" u ON u.id = s.user_id '
+                "WHERE u.username = 'bob' "
+                "AND s.student_number = '100000001'"
+                ")"
+            )
+        )
+    if result.rowcount:
+        logger.info(
+            "Aligned Bob's demo degree-plan start year with his sample history"
+        )
 
 
 def _remove_student_semester_unique_constraint(inspector: Inspector) -> None:

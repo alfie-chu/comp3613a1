@@ -1,0 +1,45 @@
+<section class="card dashboard-degree-card border-0 shadow-sm mb-4" aria-labelledby="profile-setup-heading">
+  <div class="card-body p-4">
+    <h2 class="h5" id="profile-setup-heading">Set up your student profile</h2>
+    <p class="text-muted">Add your student details and degree programme to start tracking your progress.</p>
+    {% if programmes %}
+    <form method="post" action="{{ url_for('degree_progress_create') }}">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="student-number">Student ID</label>
+          <input class="form-control" id="student-number" name="student_number" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="profile-first-name">First name</label>
+          <input class="form-control" id="profile-first-name" name="first_name" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="profile-last-name">Last name</label>
+          <input class="form-control" id="profile-last-name" name="last_name" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="programme-id">Degree programme</label>
+          <select class="form-select" id="programme-id" name="programme_id" required>
+            <option value="" selected disabled>Select a programme</option>
+            {% for programme in programmes %}
+            <option value="{{ programme.id }}">{{ programme.programme_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="start-year">Start year</label>
+          <select class="form-select" id="start-year" name="start_year" required>
+            <option value="" selected disabled>Select a start year</option>
+            {% for year in start_years %}
+            <option value="{{ year }}">{{ year }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary mt-4" type="submit">Save student profile</button>
+    </form>
+    {% else %}
+    <p class="alert alert-warning mb-0" role="status">No degree programmes are available yet. Please try again later.</p>
+    {% endif %}
+  </div>
+</section>

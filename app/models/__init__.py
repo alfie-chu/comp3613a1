@@ -11,6 +11,8 @@ from app.models.degree_progress import (
     CoursePrerequisite,
     DegreePlan,
     DegreeRequirement,
+    ProgrammeCatalogue,
+    ProgrammeCourseMapping,
     Semester,
 )
 from app.models.semester_plan import CourseOffering, CourseSelection, SemesterPlan
@@ -25,6 +27,8 @@ __all__ = [
     "Semester",
     "CourseCompletion",
     "CoursePrerequisite",
+    "ProgrammeCatalogue",
+    "ProgrammeCourseMapping",
     "CourseOffering",
     "SemesterPlan",
     "CourseSelection",

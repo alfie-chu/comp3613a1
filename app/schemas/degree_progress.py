@@ -9,6 +9,8 @@ class CompletedCourseProgress(BaseModel):
     credits: int
     grade: str
     completed_at: datetime
+    academic_year: int
+    semester_number: int
 
 
 class OutstandingRequirement(BaseModel):

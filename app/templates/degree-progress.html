@@ -40,7 +40,62 @@
 
   <section class="card border-0 shadow-sm mb-4" aria-labelledby="courses-heading">
     <div class="card-body p-4">
-      <h2 class="h5 mb-3" id="courses-heading">Completed courses</h2>
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+        <h2 class="h5 mb-0" id="courses-heading">Completed courses</h2>
+        {% if completion_courses and completion_academic_years %}
+        <button class="btn btn-primary" id="toggle-completion-form" type="button"
+                aria-expanded="false" aria-controls="completion-form-panel">
+          Add completed course
+        </button>
+        {% endif %}
+      </div>
+      {% if completion_courses and completion_academic_years %}
+      <div class="border rounded-3 p-3 mb-4" id="completion-form-panel" hidden>
+        <form method="post" action="{{ url_for('degree_completion_create') }}">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="completion-course">Course</label>
+              <select class="form-select" id="completion-course" name="course_id" required>
+                <option value="" selected disabled>Select a course</option>
+                {% for course in completion_courses %}
+                <option value="{{ course.id }}">{{ course.course_code }} · {{ course.title }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="completion-grade">Grade</label>
+              <select class="form-select" id="completion-grade" name="grade" required>
+                <option value="" selected disabled>Select a grade</option>
+                {% for grade in completion_grades %}
+                <option value="{{ grade }}">{{ grade }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="completion-semester">Semester</label>
+              <select class="form-select" id="completion-semester" name="semester_number" required>
+                <option value="" selected disabled>Select a semester</option>
+                <option value="1">Semester 1</option>
+                <option value="2">Semester 2</option>
+                <option value="3">Semester 3</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="completion-year">Academic year</label>
+              <select class="form-select" id="completion-year" name="academic_year" required>
+                <option value="" selected disabled>Select an academic year</option>
+                {% for year in completion_academic_years %}
+                <option value="{{ year }}">{{ year }}/{{ year + 1 }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary mt-3" type="submit">Save completed course</button>
+        </form>
+      </div>
+      {% elif progress %}
+      <p class="small text-muted mb-3">No additional courses are currently available for your programme.</p>
+      {% endif %}
       {% if progress.completed_courses %}
       <div class="table-responsive">
         <table class="table align-middle mb-0">
@@ -49,6 +104,7 @@
               <th scope="col">Course code</th>
               <th scope="col">Status</th>
               <th scope="col">Grade</th>
+              <th scope="col">Semester completed</th>
             </tr>
           </thead>
           <tbody>
@@ -60,6 +116,7 @@
               </td>
               <td>Completed</td>
               <td>{{ course.grade }}</td>
+              <td>Semester {{ course.semester_number }} · {{ course.academic_year }}/{{ course.academic_year + 1 }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -89,10 +146,22 @@
     </div>
   </section>
   {% else %}
-  <div class="alert alert-light border" role="status">
-    <h2 class="h6">No student profile is linked to this account yet.</h2>
-    <p class="mb-0">Ask an advisor to link your student record before viewing degree progress.</p>
-  </div>
+  {% include "_student-profile-form.html" %}
   {% endif %}
 </main>
+{% endblock %}
+
+{% block subpage_scripts %}
+<script>
+  const completionFormToggle = document.getElementById("toggle-completion-form");
+  const completionFormPanel = document.getElementById("completion-form-panel");
+
+  if (completionFormToggle && completionFormPanel) {
+    completionFormToggle.addEventListener("click", () => {
+      const isExpanded = completionFormToggle.getAttribute("aria-expanded") === "true";
+      completionFormToggle.setAttribute("aria-expanded", String(!isExpanded));
+      completionFormPanel.hidden = isExpanded;
+    });
+  }
+</script>
 {% endblock %}
