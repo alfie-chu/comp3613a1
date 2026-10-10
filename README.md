@@ -134,7 +134,7 @@ Commands are implemented in `app/cli.py` (stdlib `argparse`) and invoked via `ma
 | `python manage.py run` | Start Uvicorn (reload unless `ENV=production`) |
 | `python manage.py users` | Print users in the DB |
 | `python manage.py transcripts` | Optional: package agent-written `docs/transcripts/*.md` into INDEX + zip (no IDE scrape) |
-| `python manage.py report --name "..." --id "..."` | **Submission package:** merge `docs/judge.md`, package `docs/transcripts/`, write `docs/report.pdf`. Guide must run student-judge and **pull chats into `docs/transcripts/`** first (Copilot/Cursor/OpenCode). Incomplete drafts allowed. Fails only if course skills were edited |
+| `python manage.py report --name "..." --id "..."` | **Submission package:** merge `docs/judge.md`, package `docs/transcripts/`, write `docs/report.pdf`. Add `--compact` to omit the transcript appendix while retaining the cover, selected project sections, and the full report tail from Theming through Skill integrity. Guide must run student-judge and **pull chats into `docs/transcripts/`** first (Copilot/Cursor/OpenCode). Incomplete drafts allowed. Fails only if course skills were edited |
 
 | `python manage.py usecase` | Render `docs/diagrams/use-case.json` to a UML use-case PNG via the vendored PlantUML JAR (`docs/diagrams/use-case.png`) |
 | `python manage.py skills-verify` | Check course skills against `.agents/skills.lock.json` |

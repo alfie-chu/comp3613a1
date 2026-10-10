@@ -171,6 +171,7 @@ def export_report(
     student_id: str,
     source: Path | None = None,
     output: Path | None = None,
+    compact: bool = False,
 ) -> ReportExportResult:
     """Merge judge, dump transcripts, write PDF. Returns paths and status."""
     src = source or DEFAULT_REPORT
@@ -228,21 +229,38 @@ def export_report(
             "(runs student-judge -> docs/judge.md), then re-run this command."
         )
     app_url, logins, missing = _marker_access(markdown)
+    youtube_url = _first_url(_section(markdown, "youtube url"))
+    github_url = "https://github.com/alfie-chu/comp3613a1"
+    agent_name = "GitHub Copilot Agent"
+    if compact:
+        markdown = _compact_report_markdown(markdown)
     dest.parent.mkdir(parents=True, exist_ok=True)
 
     pdf = _new_pdf(bool(missing))
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
-        cover = _cover_html(clean_name, clean_id, app_url, logins, integrity, missing)
-        body = _markdown_to_html(markdown, src.parent, Path(tmp))
-        appendix = _markdown_to_html(
-            appendix_markdown(transcripts),
-            src.parent,
-            Path(tmp),
+        cover = _cover_html(
+            clean_name,
+            clean_id,
+            app_url,
+            logins,
+            integrity,
+            missing,
+            compact=compact,
+            github_url=github_url,
+            youtube_url=youtube_url,
+            agent_name=agent_name,
         )
+        body = _markdown_to_html(markdown, src.parent, Path(tmp))
         _write_report_html(pdf, cover + body)
-        if appendix.strip():
-            pdf.add_page()
-            _write_report_html(pdf, appendix)
+        if not compact:
+            appendix = _markdown_to_html(
+                appendix_markdown(transcripts),
+                src.parent,
+                Path(tmp),
+            )
+            if appendix.strip():
+                pdf.add_page()
+                _write_report_html(pdf, appendix)
     pdf.output(dest)
     print(f"  [3/3] PDF: {dest.as_posix()}")
     if missing:
@@ -250,7 +268,11 @@ def export_report(
         print("Re-export later when those sections are filled. Full marks still need a live URL.")
     return ReportExportResult(
         pdf_path=dest,
-        judge_merged=judge_merged and COMPETENCY_HEADING in markdown,
+        judge_merged=judge_merged
+        and (
+            COMPETENCY_HEADING in markdown
+            or (compact and "## Judge impression" in markdown)
+        ),
         transcript_count=transcripts.found,
         transcript_zip=transcripts.zip_path,
     )
@@ -584,6 +606,11 @@ def _cover_html(
     logins: str,
     integrity: IntegrityResult,
     missing: list[str],
+    *,
+    compact: bool = False,
+    github_url: str = "",
+    youtube_url: str = "",
+    agent_name: str = "",
 ) -> str:
     login_html = " · ".join(
         html_lib.escape(line.strip()) for line in logins.splitlines() if line.strip()
@@ -597,8 +624,17 @@ def _cover_html(
         ("Student ID", html_lib.escape(student_id), False),
         ("Deployed app", html_lib.escape(app_url), False),
         ("Logins", login_html, False),
-        ("Skill integrity", integrity_value, not integrity.ok),
     ]
+    if compact:
+        rows.extend(
+            [
+                ("GitHub", html_lib.escape(github_url or "Not listed"), False),
+                ("YouTube", html_lib.escape(youtube_url or "Not listed"), False),
+                ("Agent", html_lib.escape(agent_name or "Not listed"), False),
+            ]
+        )
+    else:
+        rows.append(("Skill integrity", integrity_value, not integrity.ok))
     cells = []
     for index, (label, value, fail) in enumerate(rows):
         if fail:
@@ -629,20 +665,126 @@ def _cover_html(
 <tbody>{"".join(cells)}</tbody>
 </table>
 {missing_note}
-<p><font size="2" color="#5A6070">The YouTube video must show this name and must not show or say this ID. App logins belong in this report. Database passwords do not.</font></p>
+{'' if compact else '<p><font size="2" color="#5A6070">The YouTube video must show this name and must not show or say this ID. App logins belong in this report. Database passwords do not.</font></p>'}
 """
+
+
+def _first_url(text: str) -> str:
+    match = re.search(r"https?://[^\s)]+", text)
+    return match.group(0).rstrip(".,;") if match else ""
+
+
+def _compact_report_markdown(markdown: str) -> str:
+    """Keep the requested front sections and the full report tail in the PDF."""
+    assigned = _section(markdown, "assigned project")
+    workflows = _section(markdown, "three workflows")
+    use_cases = _section(markdown, "use case diagram")
+    model = _section(markdown, "model diagram")
+    wireframes = _section(markdown, "wireframes")
+    report_tail = _report_tail(markdown, "Theming", "Skill integrity")
+
+    project = assigned.strip()
+    interpretation = (
+        "MyAdvisor is a departmental advising application for students to track "
+        "degree progress, plan semester course selections, and obtain approval "
+        "from an administrator or advisor."
+    )
+    actor_names: list[str] = []
+    actor_spec = REPO_ROOT / "docs" / "diagrams" / "use-case.json"
+    if actor_spec.is_file():
+        try:
+            payload = json.loads(actor_spec.read_text(encoding="utf-8"))
+            actor_names = [
+                str(actor["name"])
+                for actor in payload.get("actors", [])
+                if isinstance(actor, dict) and actor.get("name")
+            ]
+        except (json.JSONDecodeError, AttributeError, TypeError):
+            actor_names = []
+    actor_block = (
+        "\n\nActors: " + ", ".join(actor_names) + "."
+        if actor_names
+        else ""
+    )
+
+    sections = [
+        "# MyAdvisor Assignment Report",
+        "",
+        "## Interpretation",
+        "",
+        interpretation,
+        "",
+        "## Three workflows",
+        "",
+        workflows or project,
+        "",
+        "## Use cases and actors",
+        "",
+        use_cases + actor_block,
+        "",
+        "## Model",
+        "",
+        model,
+        "",
+        "## Wireframes",
+        "",
+        wireframes,
+        "",
+        report_tail,
+    ]
+    return "\n".join(sections)
+
+
+def _report_tail(markdown: str, start_heading: str, end_heading: str) -> str:
+    """Return source Markdown from one level-two heading through another."""
+    lines = markdown.splitlines()
+    start = next(
+        (
+            index
+            for index, line in enumerate(lines)
+            if line.strip().lower() == f"## {start_heading}".lower()
+        ),
+        None,
+    )
+    end = next(
+        (
+            index
+            for index, line in enumerate(lines)
+            if line.strip().lower() == f"## {end_heading}".lower()
+        ),
+        None,
+    )
+    if start is None or end is None or end < start:
+        raise ValueError(
+            f"Compact PDF requires ## {start_heading} through ## {end_heading} in the report."
+        )
+    following_heading = next(
+        (
+            index
+            for index in range(end + 1, len(lines))
+            if re.match(r"^##\s+", lines[index])
+        ),
+        len(lines),
+    )
+    return "\n".join(lines[start:following_heading]).strip()
 
 
 def _section(markdown: str, *titles: str) -> str:
     wanted = {title.lower() for title in titles}
     capture = False
+    section_level = 0
     lines: list[str] = []
     for line in markdown.splitlines():
         if line.startswith("#"):
-            if capture:
+            level = len(line) - len(line.lstrip("#"))
+            if capture and level <= section_level:
                 break
             heading = line.lstrip("#").strip().lower()
-            capture = heading in wanted
+            if heading in wanted:
+                capture = True
+                section_level = level
+            elif not capture:
+                continue
             continue
         if capture:
             lines.append(line)
