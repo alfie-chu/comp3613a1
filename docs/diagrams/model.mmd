@@ -1,0 +1,136 @@
+erDiagram
+  USER ||--o| STUDENT : has_profile
+  STUDENT ||--o| DEGREE_PLAN : belongs_to
+  DEGREE_PLAN ||--o{ DEGREE_REQUIREMENT : includes
+  COURSE ||--o{ DEGREE_REQUIREMENT : satisfies
+  COURSE ||--o{ COURSE_PREREQUISITE : has_prerequisite_rule
+  COURSE_PREREQUISITE }o--|| COURSE : prerequisite_course
+
+  STUDENT ||--o{ SEMESTER_PLAN : creates
+  SEMESTER ||--o{ SEMESTER_PLAN : contains
+  SEMESTER_PLAN ||--o{ COURSE_SELECTION : includes
+  COURSE_OFFERING ||--o{ COURSE_SELECTION : offers
+
+  STUDENT ||--o{ COURSE_COMPLETION : records
+  COURSE ||--o{ COURSE_COMPLETION : completed_as
+  SEMESTER ||--o{ COURSE_COMPLETION : occurs_in
+
+  USER ||--o| ADVISOR : has_profile
+  ADVISOR ||--o{ APPROVAL_REQUEST : reviews
+  SEMESTER_PLAN ||--o{ APPROVAL_REQUEST : requests
+
+  USER {
+    int id PK
+    string username
+    string email
+    string role
+  }
+
+  STUDENT {
+    int id PK
+    string student_number
+    string first_name
+    string last_name
+    string email
+    int user_id FK "unique"
+    int degree_plan_id FK
+    string status
+  }
+
+  ADVISOR {
+    int id PK
+    int user_id FK "unique"
+    string first_name
+    string last_name
+    string email
+    string department
+  }
+
+  DEGREE_PLAN {
+    int id PK
+    string programme_name
+    int total_credits_required
+    int start_year
+    int end_year
+    string status
+  }
+
+  DEGREE_REQUIREMENT {
+    int id PK
+    int degree_plan_id FK
+    int course_id FK
+    string requirement_type
+    bool is_required
+    string completion_rule
+  }
+
+  COURSE {
+    int id PK
+    string course_code
+    string title
+    int credits
+    string category
+    string level
+  }
+
+  COURSE_PREREQUISITE {
+    int course_id PK, FK
+    int prerequisite_course_id PK, FK
+  }
+
+  SEMESTER {
+    int id PK
+    string semester_name
+    int year
+    date start_date
+    date end_date
+  }
+
+  COURSE_OFFERING {
+    int id PK
+    int course_id FK
+    int semester_id FK
+    string section
+    string delivery_mode
+    string status
+  }
+
+  SEMESTER_PLAN {
+    int id PK
+    int student_id FK
+    int semester_id FK
+    string status
+    datetime created_at
+    datetime submitted_at "nullable until submission"
+  }
+
+  COURSE_SELECTION {
+    int id PK
+    int semester_plan_id FK
+    int course_offering_id FK
+    string status
+    string notes
+  }
+
+  COURSE_COMPLETION {
+    int id PK
+    int student_id FK
+    int course_id FK
+    int semester_id FK
+    int academic_year
+    int semester_number
+    string grade
+    datetime completed_at
+    bool is_transfer
+  }
+
+  APPROVAL_REQUEST {
+    int id PK
+    int semester_plan_id FK
+    int advisor_id FK
+    string status
+    string rationale
+    string advisor_comments
+    datetime submitted_at
+    datetime reviewed_at
+  }
