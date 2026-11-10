@@ -26,4 +26,5 @@ from . import (
     degree_progress,
     semester_plan,
     admin_approval,
+    api_workflows,
 )

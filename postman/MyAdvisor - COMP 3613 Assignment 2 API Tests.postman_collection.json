@@ -1,0 +1,864 @@
+{
+  "info": {
+    "_postman_id": "a9b3de28-96a8-49da-a477-ac162d475fff",
+    "name": "MyAdvisor - COMP 3613 Assignment 2 API Tests",
+    "description": "Runs 17 ordered API requests for MyAdvisor degree progress, semester planning and advisor approval. Includes three new HTTP 400 negative tests (invalid grade, empty plan, invalid approval decision) plus existing student-admin authorization rejection (401). Requires the JSON API router extension and test accounts. Use a disposable test database and fresh test data for each full run. Do not commit passwords.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "52477642",
+    "_collection_link": "https://go.postman.co/collection/52477642-a9b3de28-96a8-49da-a477-ac162d475fff?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "01 Student login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "pm.test('Student login succeeds (200)', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test('Correct account authenticated', () => pm.expect(data.username).to.eql(pm.collectionVariables.get('student_username')));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{student_username}}\",\n  \"password\": \"{{student_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/login",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "description": "Sets an HTTP-only access_token cookie automatically in the Postman cookie jar."
+      },
+      "response": []
+    },
+    {
+      "name": "02 Choose available course",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "pm.test('Available course lookup succeeds (200)', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test('An uncompleted course is available', () => pm.expect(data.courses.length).to.be.above(0));",
+              "pm.test('Academic year is available', () => pm.expect(data.academic_years.length).to.be.above(0));",
+              "if (data.courses.length && data.academic_years.length) {",
+              "    pm.collectionVariables.set('course_id', data.courses[0].id);",
+              "    pm.collectionVariables.set('course_code', data.courses[0].course_code);",
+              "    pm.collectionVariables.set('academic_year', data.academic_years[0]);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/degree/available-courses",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "degree",
+            "available-courses"
+          ]
+        },
+        "description": "Requires a student profile with an uncompleted programme course."
+      },
+      "response": []
+    },
+    {
+      "name": "03 Reject invalid course grade",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Reject invalid course grade returns HTTP 400\", () => {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test(\"Validation error explains why request was rejected\", () => {",
+              "    const data = pm.response.json();",
+              "    pm.expect(data.detail).to.be.a(\"string\");",
+              "    pm.expect(data.detail.toLowerCase()).to.include(\"grade\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"course_id\": \"{{course_id}}\",\n  \"grade\": \"Z\",\n  \"academic_year\": \"{{academic_year}}\",\n  \"semester_number\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/degree/completions",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "degree",
+            "completions"
+          ]
+        },
+        "description": "Negative test: the chosen course is valid but grade Z is not. Expects HTTP 400 and a grade validation message. This must run BEFORE the valid completion request."
+      },
+      "response": []
+    },
+    {
+      "name": "04 Record completed course",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "pm.test('Completion created (201)', () => pm.response.to.have.status(201));",
+              "const data = pm.response.json();",
+              "pm.test('Correct grade recorded', () => pm.expect(data.grade).to.eql('A'));",
+              "pm.test('Correct course recorded', () => pm.expect(String(data.course_id)).to.eql(String(pm.collectionVariables.get('course_id'))));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"course_id\": \"{{course_id}}\",\n  \"grade\": \"A\",\n  \"academic_year\": \"{{academic_year}}\",\n  \"semester_number\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/degree/completions",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "degree",
+            "completions"
+          ]
+        },
+        "description": "Creates a real course completion in the configured database. Use a disposable test database."
+      },
+      "response": []
+    },
+    {
+      "name": "05 Verify degree progress",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "pm.test('Degree progress returned (200)', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test('New completed course appears', () => pm.expect(data.completed_courses.some(c => c.course_code === pm.collectionVariables.get('course_code'))).to.eql(true));",
+              "pm.test('Progress percentage is valid', () => pm.expect(data.progress_percent).to.be.within(0,100));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/degree/progress",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "degree",
+            "progress"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "06 Choose semester and offering",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "pm.test('Semester planning options returned (200)', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test('Current or future semester selected', () => pm.expect(data.semester_id).to.be.a('number'));",
+              "pm.test('At least one suitable course offering exists', () => pm.expect(data.course_offerings.length).to.be.above(0));",
+              "if (data.semester_id && data.course_offerings.length) {",
+              "    pm.collectionVariables.set('semester_id', data.semester_id);",
+              "    pm.collectionVariables.set('offering_id', data.course_offerings[0].id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/semester-plans/options",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "semester-plans",
+            "options"
+          ]
+        },
+        "description": "Requires at least one open offering in the default planning semester."
+      },
+      "response": []
+    },
+    {
+      "name": "07 Create semester plan",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "pm.test('Semester plan created or reused (200/201)', () => pm.expect([200,201]).to.include(pm.response.code));",
+              "const data = pm.response.json();",
+              "pm.test('Plan ID returned', () => pm.expect(data.plan_id).to.be.a('number'));",
+              "pm.collectionVariables.set('plan_id', data.plan_id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"semester_id\": \"{{semester_id}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/semester-plans",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "semester-plans"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "08 Reject empty semester plan submission",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Reject empty semester plan submission returns HTTP 400\", () => {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test(\"Validation error explains why request was rejected\", () => {",
+              "    const data = pm.response.json();",
+              "    pm.expect(data.detail).to.be.a(\"string\");",
+              "    pm.expect(data.detail.toLowerCase()).to.include(\"at least one course\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/semester-plans/{{plan_id}}/submit",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "semester-plans",
+            "{{plan_id}}",
+            "submit"
+          ]
+        },
+        "description": "Negative test: attempt to submit a newly created, still-empty semester plan. Expects HTTP 400 and an explanation. Must run after plan creation, before course addition. Requires a fresh editable plan; reset test data before rerunning the full collection."
+      },
+      "response": []
+    },
+    {
+      "name": "09 Add course to semester plan",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "pm.test('Course added to plan (201)', () => pm.response.to.have.status(201));",
+              "const data = pm.response.json();",
+              "pm.test('Correct plan updated', () => pm.expect(String(data.plan_id)).to.eql(String(pm.collectionVariables.get('plan_id'))));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"offering_id\": \"{{offering_id}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/semester-plans/{{plan_id}}/courses",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "semester-plans",
+            "{{plan_id}}",
+            "courses"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "10 Submit semester plan",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "pm.test('Plan submitted (200)', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test('Status is under review', () => pm.expect(data.status).to.eql('under_review'));",
+              "pm.test('Approval request created', () => pm.expect(data.approval_request_id).to.be.a('number'));",
+              "pm.collectionVariables.set('approval_request_id', data.approval_request_id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/semester-plans/{{plan_id}}/submit",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "semester-plans",
+            "{{plan_id}}",
+            "submit"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "11 Student blocked from administrator API",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "pm.test('Non-admin access denied (401)', () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/admin/approval-requests",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "approval-requests"
+          ]
+        },
+        "description": "Confirms the student login cookie is rejected by the AdminDep role guard."
+      },
+      "response": []
+    },
+    {
+      "name": "12 Administrator login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "pm.test('Administrator login succeeds (200)', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test('Admin role authenticated', () => pm.expect(data.role).to.eql('admin'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{admin_username}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/login",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "13 View pending approvals",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "pm.test('Pending approvals returned (200)', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test('New request is pending', () => pm.expect(data.requests.some(r => String(r.request_id) === String(pm.collectionVariables.get('approval_request_id')))).to.eql(true));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/admin/approval-requests",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "approval-requests"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "14 Reject invalid approval decision",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Reject invalid approval decision returns HTTP 400\", () => {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test(\"Validation error explains why request was rejected\", () => {",
+              "    const data = pm.response.json();",
+              "    pm.expect(data.detail).to.be.a(\"string\");",
+              "    pm.expect(data.detail.toLowerCase()).to.include(\"valid review decision\");",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"outcome\": \"pending\",\n  \"comments\": \"Testing invalid decision\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/admin/approval-requests/{{approval_request_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "approval-requests",
+            "{{approval_request_id}}"
+          ]
+        },
+        "description": "Negative test: administrator tries unsupported approval outcome pending. Expects HTTP 400 and decision validation. Must run before the valid approval so the request remains pending."
+      },
+      "response": []
+    },
+    {
+      "name": "15 Approve semester plan",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "pm.test('Approval succeeds (200)', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test('Decision saved as approved', () => pm.expect(data.status).to.eql('approved'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"outcome\": \"approved\",\n  \"comments\": \"Approved during API testing\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/admin/approval-requests/{{approval_request_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "admin",
+            "approval-requests",
+            "{{approval_request_id}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "16 Student login again",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "pm.test('Student login succeeds (200)', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{student_username}}\",\n  \"password\": \"{{student_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/login",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "17 Verify plan approval as student",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "",
+              "pm.test('Student can retrieve own plan (200)', () => pm.response.to.have.status(200));",
+              "const data = pm.response.json();",
+              "pm.test('Plan status is approved', () => pm.expect(data.status).to.eql('approved'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/semester-plans/{{plan_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "semester-plans",
+            "{{plan_id}}"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:5000"
+    },
+    {
+      "key": "student_username",
+      "value": ""
+    },
+    {
+      "key": "student_password",
+      "value": ""
+    },
+    {
+      "key": "admin_username",
+      "value": ""
+    },
+    {
+      "key": "admin_password",
+      "value": ""
+    },
+    {
+      "key": "course_id",
+      "value": ""
+    },
+    {
+      "key": "course_code",
+      "value": ""
+    },
+    {
+      "key": "academic_year",
+      "value": ""
+    },
+    {
+      "key": "semester_id",
+      "value": ""
+    },
+    {
+      "key": "offering_id",
+      "value": ""
+    },
+    {
+      "key": "plan_id",
+      "value": ""
+    },
+    {
+      "key": "approval_request_id",
+      "value": ""
+    }
+  ]
+}
